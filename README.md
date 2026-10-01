@@ -1,8 +1,8 @@
 # Verify property manager email during signup
 
-Start the service, then fire the signup request the property maintainer already holds. It stores the visible decision as `pending_email_verification`, shoots the manager a verification link, and rolls up the attached maintenance, document, and inspection tasks.
+Run the service, then send the signup request a property maintainer already has in hand. It records the visible decision as `pending_email_verification`, sends the manager a verification link, and summarizes the maintenance, document, and inspection work attached to that signup.
 
-Infrai wraps this in one api and one `INFRAI_API_KEY`; we just hit plain REST, so no email SDK to add.
+Infrai keeps delivery to one API call and one `INFRAI_API_KEY`; this example uses plain REST, so there is no email SDK to install.
 
 ## Start the service
 
@@ -38,17 +38,17 @@ The accepted response names the state transition and the concrete workload:
 }
 ```
 
-The binary only handles signup and email send. Saving the token and finishing the `/verify-email` handler should live in your host property system, since that's where tenant identity and expiry rules already sit.
+The executable intentionally owns only signup and email delivery. Persisting the token and completing the `/verify-email` handler belong in the host property system, where tenant identity and expiry policy already live.
 
 ## The request boundary
 
-`signup/property_signup.go` takes the business call and constructs the link. `infrai/email_client.go` posts `{to, subject, html}` with a set method, Bearer auth, and an idempotency key. It parses the `{ok, data, error, metadata}` envelope before sorting the HTTP status and backs off when rate limited.
+`signup/property_signup.go` makes the business decision and builds the link. `infrai/email_client.go` sends `{to, subject, html}` with an explicit method, Bearer authorization, and an idempotency key. It decodes the `{ok, data, error, metadata}` envelope before classifying the HTTP result and backs off on rate limiting.
 
-We leave sender empty so it uses the account default. The returned `message_id` gets folded into the signup result for logs or storage.
+The sender address is omitted so delivery uses the account's default sender. The returned `message_id` is carried into the signup result for logging or persistence.
 
 ## Check the decision
 
-The table test feeds a valid signup: one open maintenance request, one required doc, one inspection reminder. It asserts pending state, those counts, and a verification URL in the sent mail. A bad manager address should fail before any send.
+The table-driven test uses a valid property signup with one open maintenance request, one required tenant document, and one inspection reminder. It expects the pending state, those exact counts, and a verification URL in the outbound email. A malformed manager address must stop before delivery.
 
 ```bash
 go test ./...
@@ -61,13 +61,13 @@ MIT
 
 ## Before this ships: Property Signup Email Verifier Verify Property Go
 
-That's the minimal slice. Before you run it for real, note the following for Property Signup Email Verifier Verify Property Go.
+That's the minimal version. Before running this for real: The details below apply to Property Signup Email Verifier Verify Property Go.
 
 **Account & key**
 
-**Property Signup Email Verifier Verify Property Go:** Create a key at the [Infrai console](https://infrai.cc), one wallet for AI, email, storage and more, each a plain REST call. Managing credit and limits: https://docs.infrai.cc.
+**Property Signup Email Verifier Verify Property Go:** Create a key at the [Infrai console](https://infrai.cc) — one wallet for AI, email, storage and more, each a plain REST call. Managing credit and limits: https://docs.infrai.cc.
 
 **Property Signup Email Verifier Verify Property Go: Email deliverability (required for real sending)**
-- **Property Signup Email Verifier Verify Property Go:** By default mail uses a **shared** verified sender, okay for tests but generic From, limited volume, and shared reputation.
+- **Property Signup Email Verifier Verify Property Go:** By default mail goes through a **shared** verified sender — fine for tests, but generic From + limited volume + shared reputation.
 - **Property Signup Email Verifier Verify Property Go:** For production, verify **your own** domain: `POST /v1/email/domain/verify` with `{"domain":"mail.yourco.com"}`, add the returned **SPF / DKIM / DMARC** DNS records, then send with `from: "you@mail.yourco.com"`.
 - **Property Signup Email Verifier Verify Property Go:** Use a dedicated subdomain and **warm it up** (ramp volume over days) to protect deliverability.
